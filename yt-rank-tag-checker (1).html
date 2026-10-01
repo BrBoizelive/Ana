@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>YT Rank and Tag Checker</title>
+<style>
+:root{--bg:#eef1f6;--pn:#fff;--ink:#101828;--mut:#5b6678;--ln:#d5dbe6;--ac:#2547f5;--ok:#0f9d58;--mid:#b86e00;--low:#d92d4a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 "Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+main{max-width:880px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:26px;margin:8px 0 4px;letter-spacing:-.02em}
+.mut{color:var(--mut)}
+section{background:var(--pn);border:1px solid var(--ln);border-radius:6px;padding:16px;margin-top:14px}
+label{display:block;font-weight:600;margin:12px 0 4px}
+section>label:first-child{margin-top:0}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--ln);border-radius:4px;font:inherit;background:#fff;color:var(--ink)}
+textarea{resize:vertical}
+:focus-visible{outline:3px solid var(--ac);outline-offset:1px}
+.chk{display:flex;gap:8px;align-items:center;font-weight:400;margin-top:8px}
+.chk input{width:auto}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+button{font:inherit;font-weight:600;padding:10px 16px;border:0;border-radius:4px;background:var(--ac);color:#fff;cursor:pointer}
+button.g{background:#fff;color:var(--ac);border:1px solid var(--ac)}
+button:disabled{opacity:.5;cursor:default}
+#bar,#qbar{height:4px;background:var(--ln);margin-top:14px;border-radius:2px;overflow:hidden}
+#bar i,#qbar i{display:block;height:100%;width:0;background:var(--ac)}
+#qbar{margin-top:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chips span{background:var(--bg);border:1px solid var(--ln);border-radius:3px;padding:2px 8px;font-size:13px}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:520px}
+td,th{padding:10px 8px;border-bottom:1px solid var(--ln);text-align:left;vertical-align:middle}
+th{font-weight:600;color:var(--mut);font-size:13px}
+.rk{font-size:28px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.03em;width:96px}
+.ok{color:var(--ok)}.mid{color:var(--mid)}.low{color:var(--low)}
+#msg{margin-top:12px;font-weight:600}
+.note{font-size:13px;color:var(--mut);margin-top:16px}
+@media(max-width:520px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+<h1>YT Rank and Tag Checker</h1>
+<p class="mut">Apni video kisi keyword par kis position par aa rahi hai, ek saath kai keywords me check karo. Kisi bhi video ke tags bhi nikal sakte ho.</p>
+
+<section>
+<label for="key">YouTube Data API key</label>
+<input id="key" type="password" placeholder="AIza..." autocomplete="off">
+<label class="chk"><input type="checkbox" id="save"> Is browser me key yaad rakho</label>
+<label for="video">Video ka link ya ID (Shorts bhi chalega)</label>
+<input id="video" placeholder="https://youtube.com/shorts/xxxxxxxxxxx">
+<div class="row"><button class="g" id="bTags">Video ke tags nikalo</button></div>
+<div id="tagBox" hidden></div>
+</section>
+
+<section>
+<label for="kws">Keywords, har line me ek</label>
+<textarea id="kws" rows="7" placeholder="free fire max headshot trick&#10;1v4 clutch grandmaster&#10;best sensitivity free fire max"></textarea>
+<div class="grid">
+<div><label for="region">Region</label>
+<select id="region"><option value="IN">India</option><option value="PK">Pakistan</option><option value="BD">Bangladesh</option><option value="NP">Nepal</option><option value="ID">Indonesia</option><option value="BR">Brazil</option><option value="US">USA</option><option value="GB">UK</option><option value="AE">UAE</option></select></div>
+<div><label for="depth">Kitni deep tak dekhna hai</label>
+<select id="depth"><option value="50">Top 50</option><option value="100">Top 100</option></select></div>
+</div>
+<label class="chk"><input type="checkbox" id="short"> Sirf short videos me dhundo</label>
+<div id="qtxt" class="mut" style="margin-top:12px"></div>
+<div id="qbar"><i></i></div>
+<div class="grid" style="margin-top:4px">
+<div><label for="lim">Daily quota limit</label><input id="lim" type="number" min="100" step="100"></div>
+<div style="align-self:end"><button class="g" id="bQ" type="button">Counter reset karo</button></div>
+</div>
+<label class="chk"><input type="checkbox" id="fresh"> Saved result ignore karke naya check karo</label>
+<div id="est" class="mut" style="margin-top:8px"></div>
+<div class="row"><button id="bRun">Ranking check karo</button><button class="g" id="bStop" hidden>Rokho</button></div>
+<div id="bar"><i></i></div>
+<div id="msg" role="status"></div>
+</section>
+
+<section id="res" hidden>
+<div class="row" style="margin-top:0;justify-content:space-between;align-items:center">
+<b id="sum"></b><button class="g" id="bCsv">CSV download</button>
+</div>
+<div class="tw"><table>
+<thead><tr><th>Rank</th><th>Keyword</th><th>Is keyword par #1 video</th></tr></thead>
+<tbody id="tb"></tbody>
+</table></div>
+</section>
+
+<p class="note">Ye result YouTube Data API ke search results par based hain. Asli YouTube app ki feed personalization ki wajah se thodi alag ho sakti hai, isliye isse ek mote andaze ki tarah use karo. Har keyword check me 100 quota units lagte hain (Top 100 me 200). Quota counter sirf is browser ka andaza hai, asli quota Google ke dashboard me dikhta hai. Quota har raat Pacific time ke midnight par reset hota hai (India me lagbhag dopahar 12:30 se 1:30 baje). Ek din ka result is browser me save rehta hai, to wahi keyword dobara check karne par quota nahi lagta.</p>
+</main>
+
+<script>
+const $=i=>document.getElementById(i),API='https://www.googleapis.com/youtube/v3/';
+let rows=[],stop=false,tags=[];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const say=(t,bad=1)=>{const m=$('msg');m.textContent=t;m.className=bad?'low':'ok';};
+const vid=s=>{s=s.trim();const m=s.match(/(?:v=|youtu\.be\/|shorts\/|embed\/|live\/)([\w-]{11})/);return m?m[1]:/^[\w-]{11}$/.test(s)?s:null;};
+const kwList=()=>[...new Set($('kws').value.split('\n').map(s=>s.trim()).filter(Boolean))];
+
+try{const k=localStorage.getItem('ytk');if(k){$('key').value=k;$('save').checked=true;}}catch(e){}
+$('save').onchange=$('key').onchange=()=>{try{$('save').checked?localStorage.setItem('ytk',$('key').value.trim()):localStorage.removeItem('ytk');}catch(e){}};
+
+const today=()=>new Date().toLocaleDateString('en-CA'),
+ptDay=()=>new Date().toLocaleDateString('en-CA',{timeZone:'America/Los_Angeles'});
+const ls={get(k,d){try{return JSON.parse(localStorage.getItem(k))||d;}catch(e){return d;}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}};
+const limit=()=>+$('lim').value||10000;
+const used=()=>{const q=ls.get('ytq',{});return q.d===ptDay()?q.u:0;};
+const addQ=n=>{ls.set('ytq',{d:ptDay(),u:used()+n});meter();};
+const ck=(id,kw)=>[id,kw.toLowerCase(),$('region').value,$('depth').value,$('short').checked].join('|');
+const cacheGet=()=>{const c=ls.get('ytc',{});return c.d===today()?c.r:{};};
+const cachePut=(k,v)=>{const r=cacheGet();r[k]=v;ls.set('ytc',{d:today(),r});};
+function meter(){
+  const u=used(),L=limit();
+  $('qtxt').textContent=`Aaj ka quota use (andaza): ${u.toLocaleString()} / ${L.toLocaleString()} units`;
+  $('qbar').firstElementChild.style.width=Math.min(100,u/L*100)+'%';
+  est();
+}
+function est(){
+  const id=vid($('video').value),k=kwList(),u=$('depth').value*2,c=$('fresh').checked||!id?{}:cacheGet();
+  const hit=k.filter(w=>c[ck(id,w)]).length,cost=(k.length-hit)*u;
+  $('est').textContent=k.length?`${hit} keywords aaj ke saved result se aayenge (free), ${k.length-hit} naye check honge, lagbhag ${cost} units tak. Bacha hua: ${Math.max(0,limit()-used()).toLocaleString()} units.`:'';
+}
+['kws','video','depth','region','short','fresh','lim'].forEach(i=>{$(i).addEventListener('input',est);$(i).addEventListener('change',est);});
+$('lim').addEventListener('change',()=>{ls.set('ytl',limit());meter();});
+$('bQ').onclick=()=>{ls.set('ytq',{d:ptDay(),u:0});meter();};
+$('lim').value=ls.get('ytl',10000);meter();
+
+async function api(ep,p){
+  p.key=$('key').value.trim();
+  if(!p.key)throw new Error('Pehle API key daalo.');
+  let r,j;
+  try{r=await fetch(API+ep+'?'+new URLSearchParams(p));j=await r.json();}
+  catch(e){throw new Error('Internet ya network check karo, YouTube se connect nahi hua.');}
+  if(!r.ok){
+    const e=j.error||{},why=e.errors&&e.errors[0]?e.errors[0].reason:'';
+    if(why==='quotaExceeded'){ls.set('ytq',{d:ptDay(),u:limit()});meter();}
+    throw new Error(why==='quotaExceeded'?'Aaj ka quota khatam ho gaya. Kal dobara try karo.':(e.message||'API error'));
+  }
+  addQ(ep==='search'?100:1);
+  return j;
+}
+
+$('bTags').onclick=async()=>{
+  const id=vid($('video').value);
+  if(!id)return say('Sahi video link ya 11 character ka ID daalo.');
+  say('Tags la raha hoon...',0);
+  try{
+    const j=await api('videos',{part:'snippet,statistics',id}),v=j.items&&j.items[0];
+    if(!v)return say('Video nahi mili. Link check karo.');
+    tags=v.snippet.tags||[];
+    const b=$('tagBox');b.hidden=false;
+    b.innerHTML=`<label>${esc(v.snippet.title)}</label><div class="mut">${Number(v.statistics.viewCount||0).toLocaleString()} views, ${tags.length} tags</div>`+
+      (tags.length?`<div class="chips">${tags.map(t=>`<span>${esc(t)}</span>`).join('')}</div><div class="row"><button class="g" id="cT">Tags copy karo</button><button class="g" id="aT">Tags ko keywords me daalo</button></div>`:'<div class="mut">Is video me koi tag nahi hai.</div>');
+    if(tags.length){
+      $('cT').onclick=()=>navigator.clipboard.writeText(tags.join(', ')).then(()=>say('Tags copy ho gaye.',0));
+      $('aT').onclick=()=>{$('kws').value=tags.join('\n');est();say('Tags keywords box me daal diye.',0);};
+    }
+    say('',0);
+  }catch(e){say(e.message);}
+};
+
+function render(){
+  const depth=$('depth').value;
+  $('tb').innerHTML=rows.map(r=>{
+    const c=r.err?'low':r.rank?(r.rank<=10?'ok':r.rank<=30?'mid':'low'):'low';
+    const t=r.err?'Error':r.rank?'#'+r.rank:'&gt;'+depth;
+    return `<tr><td class="rk ${c}">${t}</td><td>${esc(r.kw)}${r.cached?' <span class="mut">(saved)</span>':''}</td><td class="mut">${esc(r.err||r.top||'')}</td></tr>`;
+  }).join('');
+  $('sum').textContent=`${rows.filter(r=>r.rank).length} me se ${rows.length} keywords me video mili`;
+}
+
+$('bRun').onclick=async()=>{
+  const id=vid($('video').value),kws=kwList(),depth=+$('depth').value;
+  if(!id)return say('Sahi video link ya 11 character ka ID daalo.');
+  if(!kws.length)return say('Kam se kam ek keyword daalo.');
+  rows=[];stop=false;render();$('res').hidden=false;say('',0);
+  $('bRun').disabled=true;$('bStop').hidden=false;$('bar').firstElementChild.style.width='0';
+  for(let i=0;i<kws.length&&!stop;i++){
+    const kw=kws[i],key=ck(id,kw),hit=!$('fresh').checked&&cacheGet()[key];
+    if(hit){
+      rows.push({kw,rank:hit.rank,top:hit.top,err:'',cached:true});render();
+      $('bar').firstElementChild.style.width=Math.round((i+1)/kws.length*100)+'%';
+      continue;
+    }
+    if(used()+100>limit()){say('Daily quota limit tak pahunch gaye. Baaki keywords kal check karo.');break;}
+    let rank=null,pos=0,token,top='',err='';
+    try{
+      while(rank===null&&pos<depth){
+        const p={part:'snippet',q:kw,type:'video',maxResults:50,regionCode:$('region').value};
+        if($('short').checked)p.videoDuration='short';
+        if(token)p.pageToken=token;
+        const j=await api('search',p),items=j.items||[];
+        if(!top&&items[0])top=items[0].snippet.title+' ('+items[0].snippet.channelTitle+')';
+        for(const it of items){pos++;if(it.id.videoId===id){rank=pos;break;}if(pos>=depth)break;}
+        token=j.nextPageToken;if(!token)break;
+      }
+    }catch(e){err=e.message;}
+    rows.push({kw,rank,top,err});render();
+    if(!err)cachePut(key,{rank,top});
+    $('bar').firstElementChild.style.width=Math.round((i+1)/kws.length*100)+'%';
+    if(/quota|API key/i.test(err)){say(err);break;}
+    await new Promise(r=>setTimeout(r,250));
+  }
+  $('bRun').disabled=false;$('bStop').hidden=true;
+};
+$('bStop').onclick=()=>{stop=true;};
+
+$('bCsv').onclick=()=>{
+  const q=s=>'"'+String(s).replace(/"/g,'""')+'"',d=$('depth').value;
+  const c='Keyword,Rank,Top result\n'+rows.map(r=>[q(r.kw),r.rank||('not in top '+d),q(r.top||r.err||'')].join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\ufeff'+c],{type:'text/csv'}));
+  a.download='yt-rankings.csv';a.click();
+};
+</script>
+</body>
+</html>
